@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Evidence uploads (tracked per-user, not in git)
+evidence/
+
+# Logs
+logs/
+*.log
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Environment
+.env
+.env.*
+
+# Node (frontend)
+node_modules/
+dist/
+
+# Tauri
+src-tauri/target/

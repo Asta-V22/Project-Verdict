@@ -1,0 +1,26 @@
+# Project Verdict — Python Backend Dependencies
+# Install: pip install -r requirements.txt
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+
+# Database
+sqlalchemy>=2.0.36
+alembic>=1.14.0
+
+# Data validation
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+
+# File uploads
+python-multipart>=0.0.18
+
+# Cross-platform paths
+platformdirs>=4.3.0
+
+# Scheduling (reminders)
+apscheduler>=3.10.4
+
+# Windows notifications (WinRT-based, actively maintained)
+windows-toasts>=1.2.0; sys_platform == "win32"
