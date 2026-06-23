@@ -14,7 +14,9 @@ pydantic>=2.10.0
 pydantic-settings>=2.7.0
 
 # File uploads
-python-multipart>=0.0.18
+python-multipart>=0.0.9
+apscheduler>=3.10.4
+plyer>=2.1.0
 
 # Cross-platform paths
 platformdirs>=4.3.0

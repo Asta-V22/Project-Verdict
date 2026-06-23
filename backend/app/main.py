@@ -23,10 +23,18 @@ from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import configure_logging, settings
+from app.core.scheduler import start_scheduler, stop_scheduler
 from app.database import init_db
 from app.exceptions import AppError
 from app.middleware import RequestLoggingMiddleware
-from app.routers import categories_router, health_router, instances_router, tasks_router
+from app.routers import (
+    categories_router,
+    evidence_router,
+    health_router,
+    instances_router,
+    reminders_router,
+    tasks_router,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -156,10 +164,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Signal readiness to Tauri sidecar manager
     print("ready", flush=True)
 
+    start_scheduler()
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────
     logger.info("Shutting down %s...", settings.app_name)
+    stop_scheduler()
 
 
 # ── App Factory ───────────────────────────────────────────────────────
@@ -197,6 +208,8 @@ def create_app() -> FastAPI:
     app.include_router(categories_router, prefix=settings.api_prefix)
     app.include_router(tasks_router, prefix=settings.api_prefix)
     app.include_router(instances_router, prefix=settings.api_prefix)
+    app.include_router(evidence_router, prefix=settings.api_prefix)
+    app.include_router(reminders_router, prefix=settings.api_prefix)
 
     return app
 

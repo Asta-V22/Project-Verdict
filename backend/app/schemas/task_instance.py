@@ -7,6 +7,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.enums import InstanceStatus
+from app.schemas.evidence import EvidenceResponse
 from app.schemas.task import TaskResponse
 
 
@@ -32,6 +33,7 @@ class TaskInstanceResponse(BaseModel):
     id: str
     task_id: str
     task: TaskResponse | None = None
+    evidence: list[EvidenceResponse] = []
     instance_date: str
     status: str
     due_time: str | None

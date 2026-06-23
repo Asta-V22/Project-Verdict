@@ -1,140 +1,67 @@
 """
-Notification service — abstraction layer for desktop notifications.
-
-The business logic calls `NotificationService.send()` without knowing
-which platform-specific implementation is in use. Future implementations
-can swap to Tauri native notifications or mobile push without changing
-any service or router code.
-
-Phase 1 implementation: windows-toasts (modern WinRT-based library).
+Notification service — resolves reminders against pending tasks and dispatches.
 """
 
 from __future__ import annotations
 
 import logging
-import sys
-from abc import ABC, abstractmethod
-from typing import ClassVar
+from datetime import date
+
+from sqlalchemy.orm import Session
+
+from app.core.notifications import NotificationProvider
+from app.models.enums import InstanceStatus
+from app.models.reminder import Reminder
+from app.repositories.task_instance import TaskInstanceRepository
 
 logger = logging.getLogger(__name__)
 
 
-class NotificationService(ABC):
-    """
-    Abstract base for notification delivery.
+class NotificationService:
+    """Orchestrates evaluating reminders and pushing notifications."""
 
-    All notification implementations must inherit from this class.
-    This allows the reminder engine and other services to remain
-    decoupled from the notification transport.
-    """
+    def __init__(self, db: Session, provider: NotificationProvider) -> None:
+        self.db = db
+        self.provider = provider
+        self.instance_repo = TaskInstanceRepository(db)
 
-    @abstractmethod
-    def send(self, title: str, message: str, urgency: str = "gentle") -> bool:
+    def dispatch_reminders(self, reminders: list[Reminder]) -> None:
         """
-        Send a desktop notification.
-
-        Args:
-            title: Notification title.
-            message: Notification body text.
-            urgency: One of 'gentle', 'moderate', 'urgent'.
-                     Controls display duration and styling.
-
-        Returns:
-            True if the notification was sent successfully.
+        Given a list of due reminders, resolve their targets.
+        If global -> check if ANY pending tasks exist today.
+        If task-specific -> check if THAT task has a pending instance today.
+        Send notifications to the configured provider.
         """
-        ...
-
-    @abstractmethod
-    def is_available(self) -> bool:
-        """Check if this notification backend is functional."""
-        ...
-
-
-class WindowsNotificationService(NotificationService):
-    """
-    Windows toast notification implementation using windows-toasts.
-
-    Uses modern WinRT APIs for reliable, native toast notifications
-    on Windows 10/11.
-    """
-
-    # Urgency maps to notification scenario/duration behavior
-    _URGENCY_PREFIX: ClassVar[dict[str, str]] = {
-        "gentle": "📋",
-        "moderate": "⚠️",
-        "urgent": "🚨",
-    }
-
-    def __init__(self) -> None:
-        self._toaster = None
-        self._toast_class = None
-        self._available = False
-        try:
-            from windows_toasts import Toast, WindowsToaster
-
-            self._toaster = WindowsToaster("Project Verdict")
-            self._toast_class = Toast
-            self._available = True
-            logger.info("Windows notification service initialized (windows-toasts)")
-        except ImportError:
-            logger.warning(
-                "windows-toasts not installed — notifications disabled. "
-                "Install with: pip install windows-toasts"
-            )
-        except Exception:
-            logger.exception("Failed to initialize Windows notifications")
-
-    def send(self, title: str, message: str, urgency: str = "gentle") -> bool:
-        if not self._available or self._toaster is None or self._toast_class is None:
-            logger.debug("Notification skipped (service unavailable): %s", title)
-            return False
-
-        prefix = self._URGENCY_PREFIX.get(urgency, "")
-        display_title = f"{prefix} {title}" if prefix else title
-
-        try:
-            toast = self._toast_class()
-            toast.text_fields = [display_title, message]
-            self._toaster.show_toast(toast)
-            logger.info("Notification sent: %s (urgency=%s)", title, urgency)
-            return True
-        except Exception:
-            logger.exception("Failed to send notification: %s", title)
-            return False
-
-    def is_available(self) -> bool:
-        return self._available
-
-
-class StubNotificationService(NotificationService):
-    """
-    No-op notification service for non-Windows platforms or testing.
-
-    Logs all notifications without displaying them.
-    """
-
-    def send(self, title: str, message: str, urgency: str = "gentle") -> bool:
-        logger.info(
-            "[STUB NOTIFICATION] title=%r, message=%r, urgency=%s",
-            title,
-            message,
-            urgency,
+        today = date.today()
+        # Cache today's pending instances to avoid N+1 queries if there are many reminders
+        pending_instances = self.instance_repo.get_all(
+            instance_date=today, status=InstanceStatus.PENDING.value
         )
-        return True
 
-    def is_available(self) -> bool:
-        return True
+        if not pending_instances:
+            logger.info("No pending tasks today. Skipping all reminders.")
+            return
 
+        # Map task_id -> Instance for quick lookup
+        pending_map = {inst.task_id: inst for inst in pending_instances}
+        global_sent = False
 
-def create_notification_service() -> NotificationService:
-    """
-    Factory function that returns the appropriate notification service
-    for the current platform.
-    """
-    if sys.platform == "win32":
-        service = WindowsNotificationService()
-        if service.is_available():
-            return service
-
-    logger.info("Using stub notification service")
-    return StubNotificationService()
+        for reminder in reminders:
+            if not reminder.task_id:
+                # Global reminder
+                if pending_instances and not global_sent:
+                    count = len(pending_instances)
+                    title = "Project Verdict"
+                    msg = (
+                        f"You have {count} pending task{'s' if count > 1 else ''} "
+                        "to complete today."
+                    )
+                    self.provider.send_notification(title, msg, reminder.urgency_level)
+                    global_sent = True
+            else:
+                # Task-specific reminder
+                instance = pending_map.get(reminder.task_id)
+                if instance and instance.task and instance.task.is_active:
+                    title = "Task Reminder"
+                    msg = f"Don't forget: {instance.task.title}"
+                    self.provider.send_notification(title, msg, reminder.urgency_level)

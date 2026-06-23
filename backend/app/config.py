@@ -44,6 +44,13 @@ class Settings(BaseSettings):
 
     # ── Evidence ──────────────────────────────────────────────────────
     max_evidence_file_size_mb: int = 10
+    allowed_evidence_mime_types: list[str] = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf",
+        "text/plain",
+    ]
 
     # ── Application Logic ─────────────────────────────────────────────
     max_backfill_days: int = 30
