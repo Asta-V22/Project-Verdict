@@ -9,14 +9,15 @@ renames, type changes, and constraint modifications.
 
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 
 # Import app config to get the database URL
 from app.config import settings
 
 # Import all models so Alembic can detect them for --autogenerate
-from app.models import Base  # noqa: F401
+from app.models import Base
 
 # Alembic Config object
 config = context.config

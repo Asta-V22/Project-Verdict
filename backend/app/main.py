@@ -26,7 +26,7 @@ from app.config import configure_logging, settings
 from app.database import init_db
 from app.exceptions import AppError
 from app.middleware import RequestLoggingMiddleware
-from app.routers import health_router
+from app.routers import categories_router, health_router, tasks_router
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +194,8 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(health_router, prefix=settings.api_prefix)
+    app.include_router(categories_router, prefix=settings.api_prefix)
+    app.include_router(tasks_router, prefix=settings.api_prefix)
 
     return app
 

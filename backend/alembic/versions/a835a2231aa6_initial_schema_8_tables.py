@@ -1,21 +1,21 @@
 """initial_schema_8_tables
 
 Revision ID: a835a2231aa6
-Revises: 
+Revises:
 Create Date: 2026-06-22 12:05:52.424928
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'a835a2231aa6'
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -86,8 +86,16 @@ def upgrade() -> None:
     sa.UniqueConstraint('task_id', 'instance_date', name='uq_task_instance_date')
     )
     with op.batch_alter_table('task_instances', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_task_instances_instance_date'), ['instance_date'], unique=False)
-        batch_op.create_index(batch_op.f('ix_task_instances_task_id'), ['task_id'], unique=False)
+        batch_op.create_index(
+            batch_op.f('ix_task_instances_instance_date'),
+            ['instance_date'],
+            unique=False
+        )
+        batch_op.create_index(
+            batch_op.f('ix_task_instances_task_id'),
+            ['task_id'],
+            unique=False
+        )
 
     op.create_table('task_metrics',
     sa.Column('id', sa.String(length=36), nullable=False),
