@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # ── Evidence ──────────────────────────────────────────────────────
     max_evidence_file_size_mb: int = 10
 
+    # ── Application Logic ─────────────────────────────────────────────
+    max_backfill_days: int = 30
+
     # ── Logging ───────────────────────────────────────────────────────
     log_level: str = "INFO"
 
